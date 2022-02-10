@@ -79,6 +79,7 @@ type node struct {
 	priority  uint32
 	children  []*node
 	handle    Handle
+	ext       interface{} //mdw扩展属性
 }
 
 // Increments priority of the given child and reorders if necessary
@@ -106,13 +107,14 @@ func (n *node) incrementChildPrio(pos int) int {
 
 // addRoute adds a node with the given handle to the path.
 // Not concurrency-safe!
-func (n *node) addRoute(path string, handle Handle) {
+//mdw扩展属性
+func (n *node) addRoute(path string, ext interface{}, handle Handle) {
 	fullPath := path
 	n.priority++
 
 	// Empty tree
 	if n.path == "" && n.indices == "" {
-		n.insertChild(path, fullPath, handle)
+		n.insertChild(path, fullPath, ext, handle) //mdw扩展属性
 		n.nType = root
 		return
 	}
@@ -201,7 +203,7 @@ walk:
 				n.incrementChildPrio(len(n.indices) - 1)
 				n = child
 			}
-			n.insertChild(path, fullPath, handle)
+			n.insertChild(path, fullPath, ext, handle) //mdw扩展属性
 			return
 		}
 
@@ -214,7 +216,8 @@ walk:
 	}
 }
 
-func (n *node) insertChild(path, fullPath string, handle Handle) {
+//mdw扩展属性
+func (n *node) insertChild(path, fullPath string, ext interface{}, handle Handle) {
 	for {
 		// Find prefix until first wildcard
 		wildcard, i, valid := findWildcard(path)
@@ -271,6 +274,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 
 			// Otherwise we're done. Insert the handle in the new leaf
 			n.handle = handle
+			n.ext = ext //mdw扩展属性
 			return
 		}
 
@@ -316,6 +320,7 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 	// If no wildcard was found, simply insert the path and handle
 	n.path = path
 	n.handle = handle
+	n.ext = ext //mdw扩展属性
 }
 
 // Returns the handle registered with the given path (key). The values of
@@ -323,7 +328,8 @@ func (n *node) insertChild(path, fullPath string, handle Handle) {
 // If no handle can be found, a TSR (trailing slash redirect) recommendation is
 // made if a handle exists with an extra (without the) trailing slash for the
 // given path.
-func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *Params, tsr bool) {
+//mdw扩展属性
+func (n *node) getValue(path string, params func() *Params) (handle Handle, ps *Params, tsr bool, ext interface{}) {
 walk: // Outer loop for walking the tree
 	for {
 		prefix := n.path
@@ -388,6 +394,7 @@ walk: // Outer loop for walking the tree
 					}
 
 					if handle = n.handle; handle != nil {
+						//ext = n.ext //mdw扩展属性
 						return
 					} else if len(n.children) == 1 {
 						// No handle found. Check if a handle for this path + a
@@ -424,6 +431,7 @@ walk: // Outer loop for walking the tree
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
 			if handle = n.handle; handle != nil {
+				ext = n.ext //mdw扩展属性
 				return
 			}
 

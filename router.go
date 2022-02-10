@@ -86,7 +86,7 @@ import (
 // Handle is a function that can be registered to a route to handle HTTP
 // requests. Like http.HandlerFunc, but has a third parameter for the values of
 // wildcards (path variables).
-type Handle func(http.ResponseWriter, *http.Request, Params)
+type Handle func(http.ResponseWriter, *http.Request, Params, interface{}) //mdw扩展属性
 
 // Param is a single URL parameter, consisting of a key and a value.
 type Param struct {
@@ -232,53 +232,95 @@ func (r *Router) putParams(ps *Params) {
 }
 
 func (r *Router) saveMatchedRoutePath(path string, handle Handle) Handle {
-	return func(w http.ResponseWriter, req *http.Request, ps Params) {
+	return func(w http.ResponseWriter, req *http.Request, ps Params, ext interface{}) { //mdw扩展属性
 		if ps == nil {
 			psp := r.getParams()
 			ps = (*psp)[0:1]
 			ps[0] = Param{Key: MatchedRoutePathParam, Value: path}
-			handle(w, req, ps)
+			handle(w, req, ps, ext) //mdw扩展属性
 			r.putParams(psp)
 		} else {
 			ps = append(ps, Param{Key: MatchedRoutePathParam, Value: path})
-			handle(w, req, ps)
+			handle(w, req, ps, ext) //mdw扩展属性
 		}
 	}
 }
 
 // GET is a shortcut for router.Handle(http.MethodGet, path, handle)
 func (r *Router) GET(path string, handle Handle) {
-	r.Handle(http.MethodGet, path, handle)
+	r.Handle(http.MethodGet, path, nil, handle) //mdw扩展属性
 }
 
 // HEAD is a shortcut for router.Handle(http.MethodHead, path, handle)
 func (r *Router) HEAD(path string, handle Handle) {
-	r.Handle(http.MethodHead, path, handle)
+	r.Handle(http.MethodHead, path, nil, handle) //mdw扩展属性
 }
 
 // OPTIONS is a shortcut for router.Handle(http.MethodOptions, path, handle)
 func (r *Router) OPTIONS(path string, handle Handle) {
-	r.Handle(http.MethodOptions, path, handle)
+	r.Handle(http.MethodOptions, path, nil, handle) //mdw扩展属性
 }
 
 // POST is a shortcut for router.Handle(http.MethodPost, path, handle)
 func (r *Router) POST(path string, handle Handle) {
-	r.Handle(http.MethodPost, path, handle)
+	r.Handle(http.MethodPost, path, nil, handle) //mdw扩展属性
 }
 
 // PUT is a shortcut for router.Handle(http.MethodPut, path, handle)
 func (r *Router) PUT(path string, handle Handle) {
-	r.Handle(http.MethodPut, path, handle)
+	r.Handle(http.MethodPut, path, nil, handle) //mdw扩展属性
 }
 
 // PATCH is a shortcut for router.Handle(http.MethodPatch, path, handle)
 func (r *Router) PATCH(path string, handle Handle) {
-	r.Handle(http.MethodPatch, path, handle)
+	r.Handle(http.MethodPatch, path, nil, handle) //mdw扩展属性
 }
 
 // DELETE is a shortcut for router.Handle(http.MethodDelete, path, handle)
 func (r *Router) DELETE(path string, handle Handle) {
-	r.Handle(http.MethodDelete, path, handle)
+	r.Handle(http.MethodDelete, path, nil, handle) //mdw扩展属性
+}
+
+// MyGET is a shortcut for router.Handle(http.MethodGet, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyGET(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodGet, path, ext, handle)
+}
+
+// MyHEAD is a shortcut for router.Handle(http.MethodHead, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyHEAD(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodHead, path, ext, handle) //mdw扩展属性
+}
+
+// MyOPTIONS is a shortcut for router.Handle(http.MethodOptions, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyOPTIONS(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodOptions, path, ext, handle)
+}
+
+// MyPOST is a shortcut for router.Handle(http.MethodPost, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyPOST(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodPost, path, ext, handle)
+}
+
+// MyPUT is a shortcut for router.Handle(http.MethodPut, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyPUT(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodPut, path, ext, handle)
+}
+
+// MyPATCH is a shortcut for router.Handle(http.MethodPatch, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyPATCH(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodPatch, path, ext, handle)
+}
+
+// MyDELETE is a shortcut for router.Handle(http.MethodDelete, path, ext, handle)
+//mdw扩展属性 newFunc
+func (r *Router) MyDELETE(path string, ext interface{}, handle Handle) {
+	r.Handle(http.MethodDelete, path, ext, handle)
 }
 
 // Handle registers a new request handle with the given path and method.
@@ -289,7 +331,8 @@ func (r *Router) DELETE(path string, handle Handle) {
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (r *Router) Handle(method, path string, handle Handle) {
+//mdw扩展属性
+func (r *Router) Handle(method, path string, ext interface{}, handle Handle) {
 	varsCount := uint16(0)
 
 	if method == "" {
@@ -319,7 +362,7 @@ func (r *Router) Handle(method, path string, handle Handle) {
 		r.globalAllowed = r.allowed("*", "")
 	}
 
-	root.addRoute(path, handle)
+	root.addRoute(path, ext, handle) //mdw扩展属性
 
 	// Update maxParams
 	if paramsCount := countParams(path); paramsCount+varsCount > r.maxParams {
@@ -338,9 +381,9 @@ func (r *Router) Handle(method, path string, handle Handle) {
 // Handler is an adapter which allows the usage of an http.Handler as a
 // request handle.
 // The Params are available in the request context under ParamsKey.
-func (r *Router) Handler(method, path string, handler http.Handler) {
-	r.Handle(method, path,
-		func(w http.ResponseWriter, req *http.Request, p Params) {
+func (r *Router) MyHandler(method, path string, ext interface{}, handler http.Handler) {
+	r.Handle(method, path, ext, //mdw扩展属性
+		func(w http.ResponseWriter, req *http.Request, p Params, ext interface{}) { //mdw扩展属性
 			if len(p) > 0 {
 				ctx := req.Context()
 				ctx = context.WithValue(ctx, ParamsKey, p)
@@ -351,10 +394,19 @@ func (r *Router) Handler(method, path string, handler http.Handler) {
 	)
 }
 
+func (r *Router) Handler(method, path string, handler http.Handler) {
+	r.MyHandler(method, path, nil, handler)
+}
+
 // HandlerFunc is an adapter which allows the usage of an http.HandlerFunc as a
 // request handle.
 func (r *Router) HandlerFunc(method, path string, handler http.HandlerFunc) {
 	r.Handler(method, path, handler)
+}
+
+//mdw扩展属性 newFunc
+func (r *Router) MyHandlerFunc(method, path string, ext interface{}, handler http.HandlerFunc) {
+	r.MyHandler(method, path, ext, handler)
 }
 
 // ServeFiles serves files from the given file system root.
@@ -374,7 +426,7 @@ func (r *Router) ServeFiles(path string, root http.FileSystem) {
 
 	fileServer := http.FileServer(root)
 
-	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params) {
+	r.GET(path, func(w http.ResponseWriter, req *http.Request, ps Params, _ interface{}) { //mdw扩展属性
 		req.URL.Path = ps.ByName("filepath")
 		fileServer.ServeHTTP(w, req)
 	})
@@ -391,19 +443,20 @@ func (r *Router) recv(w http.ResponseWriter, req *http.Request) {
 // If the path was found, it returns the handle function and the path parameter
 // values. Otherwise the third return value indicates whether a redirection to
 // the same path with an extra / without the trailing slash should be performed.
-func (r *Router) Lookup(method, path string) (Handle, Params, bool) {
+//mdw扩展属性
+func (r *Router) Lookup(method, path string) (Handle, Params, bool, interface{}) {
 	if root := r.trees[method]; root != nil {
-		handle, ps, tsr := root.getValue(path, r.getParams)
+		handle, ps, tsr, ext := root.getValue(path, r.getParams) //mdw扩展属性
 		if handle == nil {
 			r.putParams(ps)
-			return nil, nil, tsr
+			return nil, nil, tsr, ext //mdw扩展属性
 		}
 		if ps == nil {
-			return handle, nil, tsr
+			return handle, nil, tsr, ext //mdw扩展属性
 		}
-		return handle, *ps, tsr
+		return handle, *ps, tsr, ext //mdw扩展属性
 	}
-	return nil, nil, false
+	return nil, nil, false, nil //mdw扩展属性
 }
 
 func (r *Router) allowed(path, reqMethod string) (allow string) {
@@ -429,7 +482,7 @@ func (r *Router) allowed(path, reqMethod string) (allow string) {
 				continue
 			}
 
-			handle, _, _ := r.trees[method].getValue(path, nil)
+			handle, _, _, _ := r.trees[method].getValue(path, nil) //mdw扩展属性
 			if handle != nil {
 				// Add request method to list of allowed methods
 				allowed = append(allowed, method)
@@ -466,12 +519,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, ps, tsr := root.getValue(path, r.getParams); handle != nil {
+		if handle, ps, tsr, ext := root.getValue(path, r.getParams); handle != nil { //mdw扩展属性
 			if ps != nil {
-				handle(w, req, *ps)
+				handle(w, req, *ps, ext) //mdw扩展属性
 				r.putParams(ps)
 			} else {
-				handle(w, req, nil)
+				handle(w, req, nil, ext) //mdw扩展属性
 			}
 			return
 		} else if req.Method != http.MethodConnect && path != "/" {
